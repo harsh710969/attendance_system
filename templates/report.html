@@ -4,48 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monthly Payroll Summary</title>
-    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 30px; }
+        h1 { margin: 0; color: #0f172a; font-size: 28px; }
+        .link-back { text-decoration: none; color: #2563eb; font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; }
+        .link-back:hover { text-decoration: underline; }
+        .btn-print { background-color: #0f172a; color: white; padding: 10px 20px; border: none; font-weight: 600; border-radius: 6px; font-size: 14px; cursor: pointer; }
+        .btn-print:hover { background-color: #1e293b; }
+        .table-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background-color: #f1f5f9; padding: 14px 18px; color: #475569; font-size: 12px; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
+        tr:hover { background-color: #f8fafc; }
+        .emp-code { font-family: monospace; font-weight: 600; color: #334155; }
+        .dept { font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+        .worker-name { font-weight: 600; color: #0f172a; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .highlight-orange { color: #d97706; font-weight: 600; }
+        .total-badge { font-weight: 700; color: #059669; font-size: 15px; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <header class="flex justify-between items-center mb-8 border-b pb-4 border-slate-200">
+<body>
+    <div class="container">
+        <header>
             <div>
-                <a href="/" class="text-sm font-semibold text-blue-600 hover:underline">← Back to Attendance Logging</a>
-                <h1 class="text-3xl font-bold tracking-tight text-slate-900 mt-2">Payroll Summary Report</h1>
-                <p class="text-sm text-slate-500 mt-1">Target Period: <strong class="text-slate-700">{{ current_month }}</strong></p>
+                <a href="/" class="link-back">← Back to Attendance Logging</a>
+                <h1>Payroll Summary Report</h1>
+                <div style="font-size: 14px; color: #64748b; margin-top: 5px;">Target Period: <strong style="color: #334155;">{{ current_month }}</strong></div>
             </div>
-            <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all">Print Report / Save PDF</button>
+            <button onclick="window.print()" class="btn-print">Print Report / Save PDF</button>
         </header>
 
-        <div class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+        <div class="table-card">
+            <div style="overflow-x: auto;">
+                <table>
                     <thead>
-                        <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
-                            <th class="px-6 py-4">Code</th>
-                            <th class="px-6 py-4">Name</th>
-                            <th class="px-6 py-4 text-center">Regular Shifts</th>
-                            <th class="px-6 py-4 text-center">Weekly Off Worked (WOW)</th>
-                            <th class="px-6 py-4 text-center">SL</th>
-                            <th class="px-6 py-4 text-center">CL</th>
-                            <th class="px-6 py-4 text-center">PL</th>
-                            <th class="px-6 py-4 text-right">Total Payable Metrics</th>
+                        <tr>
+                            <th style="width: 12%;">Code</th>
+                            <th style="width: 23%;">Name</th>
+                            <th class="text-center" style="width: 13%;">Regular Shifts</th>
+                            <th class="text-center" style="width: 15%;">Weekly Off Worked (WOW)</th>
+                            <th class="text-center" style="width: 8%;">SL</th>
+                            <th class="text-center" style="width: 8%;">CL</th>
+                            <th class="text-center" style="width: 8%;">PL</th>
+                            <th class="text-right" style="width: 13%;">Total Payable</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 text-sm">
+                    <tbody>
                         {% for row in rows %}
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-6 py-4 font-mono font-medium text-slate-900">{{ row.emp_code }}</td>
-                            <td class="px-6 py-4">
-                                <div class="font-semibold text-slate-900">{{ row.name }}</div>
-                                <div class="text-xs text-slate-400">{{ row.department }}</div>
+                        <tr>
+                            <td class="emp-code">{{ row.emp_code }}</td>
+                            <td>
+                                <div class="worker-name">{{ row.name }}</div>
+                                <div class="dept">{{ row.department }}</div>
                             </td>
-                            <td class="px-6 py-4 text-center text-slate-600">{{ row.regular_shifts }}</td>
-                            <td class="px-6 py-4 text-center font-medium text-amber-600">{{ row.weekly_off_worked }}</td>
-                            <td class="px-6 py-4 text-center text-slate-500">{{ row.sick_leaves }}</td>
-                            <td class="px-6 py-4 text-center text-slate-500">{{ row.casual_leaves }}</td>
-                            <td class="px-6 py-4 text-center text-slate-500">{{ row.paid_leaves }}</td>
-                            <td class="px-6 py-4 text-right font-bold text-emerald-700">
+                            <td class="text-center">{{ row.regular_shifts }}</td>
+                            <td class="text-center highlight-orange">{{ row.weekly_off_worked }}</td>
+                            <td class="text-center">{{ row.sick_leaves }}</td>
+                            <td class="text-center">{{ row.casual_leaves }}</td>
+                            <td class="text-center">{{ row.paid_leaves }}</td>
+                            <td class="text-right total-badge">
                                 {{ row.regular_shifts + row.weekly_off_worked + row.sick_leaves + row.casual_leaves + row.paid_leaves }} Units
                             </td>
                         </tr>
