@@ -4,42 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Factory Attendance Dashboard</title>
-    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 20px; }
+        .container { max-w: 1200px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 30px; }
+        h1 { margin: 0; color: #0f172a; font-size: 28px; }
+        .btn-report { background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; rounded-radius: 6px; font-weight: 600; border-radius: 6px; font-size: 14px; }
+        .btn-report:hover { background-color: #1d4ed8; }
+        .table-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background-color: #f1f5f9; padding: 14px 18px; color: #475569; font-size: 12px; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
+        tr:hover { background-color: #f8fafc; }
+        .emp-code { font-family: monospace; font-weight: 600; color: #334155; }
+        .dept { font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+        .worker-name { font-weight: 600; color: #0f172a; }
+        select { background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; width: 100%; color: #334155; font-size: 13px; outline: none; }
+        select:focus { border-color: #2563eb; background-color: white; }
+        .footer-action { background-color: #f8fafc; padding: 15px 20px; display: flex; justify-content: flex-end; border-top: 1px solid #e2e8f0; }
+        .btn-submit { background-color: #059669; color: white; border: none; padding: 12px 24px; font-weight: 600; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .btn-submit:hover { background-color: #047857; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <header class="flex justify-between items-center mb-8 border-b pb-4 border-slate-200">
+<body>
+    <div class="container">
+        <header>
             <div>
-                <h1 class="text-3xl font-bold tracking-tight text-slate-900">Multi-Shift Attendance System</h1>
-                <p class="text-sm text-slate-500 mt-1">Date: <strong class="text-slate-700">{{ today_str }}</strong></p>
+                <h1>Multi-Shift Attendance System</h1>
+                <div style="font-size: 14px; color: #64748b; margin-top: 5px;">Date: <strong style="color: #334155;">{{ today_str }}</strong></div>
             </div>
-            <a href="/payroll-report" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all shadow-sm">View Monthly Payroll Report</a>
+            <a href="/payroll-report" class="btn-report">View Monthly Payroll Report</a>
         </header>
 
-        <form action="/submit-attendance" methods="POST" class="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+        <form action="/submit-attendance" method="POST" class="table-card">
+            <div style="overflow-x: auto;">
+                <table>
                     <thead>
-                        <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
-                            <th class="px-6 py-4">Emp Code</th>
-                            <th class="px-6 py-4">Worker Name</th>
-                            <th class="px-6 py-4">Morning Shift (06-14)</th>
-                            <th class="px-6 py-4">Afternoon Shift (14-22)</th>
-                            <th class="px-6 py-4">Night Shift (22-06)</th>
+                        <tr>
+                            <th style="width: 15%;">Emp Code</th>
+                            <th style="width: 25%;">Worker Name</th>
+                            <th style="width: 20%;">Morning Shift (06-14)</th>
+                            <th style="width: 20%;">Afternoon Shift (14-22)</th>
+                            <th style="width: 20%;">Night Shift (22-06)</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 text-sm">
+                    <tbody>
                         {% for worker in workers %}
                         {% set log = log_map.get(worker.emp_code) %}
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-6 py-4 font-mono font-medium text-slate-900">{{ worker.emp_code }}</td>
-                            <td class="px-6 py-4">
-                                <div class="font-semibold text-slate-900">{{ worker.name }}</div>
-                                <div class="text-xs text-slate-400">{{ worker.department }}</div>
+                        <tr>
+                            <td class="emp-code">{{ worker.emp_code }}</td>
+                            <td>
+                                <div class="worker-name">{{ worker.name }}</div>
+                                <div class="dept">{{ worker.department }}</div>
                             </td>
-                            <!-- Morning Shift Selector -->
-                            <td class="px-6 py-4">
-                                <select name="morning_{{ worker.emp_code }}" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-md p-1.5 w-full focus:outline-blue-500">
+                            <td>
+                                <select name="morning_{{ worker.emp_code }}">
                                     <option value="None" {% if log and log.shift_morning == 'None' %}selected{% endif %}>—</option>
                                     <option value="Present" {% if log and log.shift_morning == 'Present' %}selected{% endif %}>Present</option>
                                     <option value="WOW" {% if log and log.shift_morning == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
@@ -48,9 +67,8 @@
                                     <option value="PL" {% if log and log.shift_morning == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
                                 </select>
                             </td>
-                            <!-- Afternoon Shift Selector -->
-                            <td class="px-6 py-4">
-                                <select name="afternoon_{{ worker.emp_code }}" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-md p-1.5 w-full focus:outline-blue-500">
+                            <td>
+                                <select name="afternoon_{{ worker.emp_code }}">
                                     <option value="None" {% if log and log.shift_afternoon == 'None' %}selected{% endif %}>—</option>
                                     <option value="Present" {% if log and log.shift_afternoon == 'Present' %}selected{% endif %}>Present</option>
                                     <option value="WOW" {% if log and log.shift_afternoon == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
@@ -59,9 +77,8 @@
                                     <option value="PL" {% if log and log.shift_afternoon == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
                                 </select>
                             </td>
-                            <!-- Night Shift Selector -->
-                            <td class="px-6 py-4">
-                                <select name="night_{{ worker.emp_code }}" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-md p-1.5 w-full focus:outline-blue-500">
+                            <td>
+                                <select name="night_{{ worker.emp_code }}">
                                     <option value="None" {% if log and log.shift_night == 'None' %}selected{% endif %}>—</option>
                                     <option value="Present" {% if log and log.shift_night == 'Present' %}selected{% endif %}>Present</option>
                                     <option value="WOW" {% if log and log.shift_night == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
@@ -75,8 +92,8 @@
                     </tbody>
                 </table>
             </div>
-            <div class="bg-slate-50 px-6 py-4 flex justify-end border-t border-slate-200">
-                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-6 rounded-lg shadow-xs transition-colors cursor-pointer">Save Today's Attendance</button>
+            <div class="footer-action">
+                <button type="submit" class="btn-submit">Save Today's Attendance</button>
             </div>
         </form>
     </div>
