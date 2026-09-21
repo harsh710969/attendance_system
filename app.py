@@ -1,9 +1,12 @@
 import os
 import sqlite3
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+import random
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, redirect, url_for, session, abort
 
 app = Flask(__name__)
+# Secret key for encrypting user login sessions safely on the cloud
+app.secret_key = os.environ.get("SECRET_KEY", "super-secure-factory-key-99X!")
 DB_FILE = 'attendance.db'
 
 def get_db_connection():
@@ -24,7 +27,7 @@ def init_db():
         )
     ''')
     
-    # 2. Daily Attendance Logs Table (Tracks 3 distinct shift slots per day)
+    # 2. Daily Attendance Logs Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS attendance_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,38 +41,95 @@ def init_db():
         )
     ''')
     
-    # Seed sample workers if table is empty
-    cursor.execute("SELECT COUNT(*) FROM workers")
+    # 3. Secure Users Authentication Table (Handles Admin and Supervisors)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL, -- 'admin' or 'supervisor'
+            status TEXT DEFAULT 'active' -- 'active' or 'inactive'
+        )
+    ''')
+    
+    # Auto-create Default Master Admin Account if table is clean
+    cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
     if cursor.fetchone()[0] == 0:
-        sample_workers = [
-            ('EMP001', 'Rajesh Kumar', 'Production'),
-            ('EMP002', 'Amit Sharma', 'Logistics'),
-            ('EMP003', 'Sunita Rao', 'Quality Control'),
-            ('EMP004', 'Vijay Yadav', 'Maintenance')
-        ]
-        cursor.executemany("INSERT INTO workers VALUES (?, ?, ?)", sample_workers)
+        cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?)", ('admin', 'adminpassword', 'admin', 'active'))
         
     conn.commit()
     conn.close()
 
+# --- SECURITY PROTECTION DECORATORS ---
+def require_login():
+    if 'username' not in session:
+        return False
+    # Check if admin has deactivated this account mid-session
+    conn = get_db_connection()
+    user = conn.execute("SELECT status FROM users WHERE username = ?", (session['username'],)).fetchone()
+    conn.close()
+    if not user or user['status'] != 'active':
+        session.clear()
+        return False
+    return True
+
+# --- ROUTING LOGIC ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username').strip()
+        password = request.form.get('password').strip()
+        
+        conn = get_db_connection()
+        user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
+        conn.close()
+        
+        if user and user['status'] == 'active':
+            session['username'] = user['username']
+            session['role'] = user['role']
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error="Invalid credentials or deactivated account.")
+            
+    return render_template('login.html', error=None)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 @app.route('/')
 def index():
-    conn = get_db_connection()
-    workers = conn.execute("SELECT * FROM workers ORDER BY name ASC").fetchall()
+    if not require_login(): return redirect(url_for('login'))
     
     today_str = datetime.today().strftime('%Y-%m-%d')
-    logs = conn.execute(
-        "SELECT * FROM attendance_logs WHERE log_date = ?", (today_str,)
-    ).fetchall()
+    selected_date = request.args.get('date', today_str)
+    
+    # SUPERVISOR LOCK PREVENTING PAST HISTORICAL TAMPERING
+    if session['role'] == 'supervisor' and selected_date != today_str:
+        return redirect(url_for('index', date=today_str))
+        
+    conn = get_db_connection()
+    workers = conn.execute("SELECT * FROM workers ORDER BY emp_code ASC").fetchall()
+    logs = conn.execute("SELECT * FROM attendance_logs WHERE log_date = ?", (selected_date,)).fetchall()
+    supervisors = conn.execute("SELECT * FROM users WHERE role = 'supervisor'").fetchall() if session['role'] == 'admin' else []
     conn.close()
     
     log_map = {log['emp_code']: log for log in logs}
-    return render_template('dashboard.html', workers=workers, log_map=log_map, today_str=today_str)
+    return render_template('dashboard.html', workers=workers, log_map=log_map, today_str=selected_date, supervisors=supervisors)
 
 @app.route('/submit-attendance', methods=['POST'])
 def submit_attendance():
-    conn = get_db_connection()
+    if not require_login(): return redirect(url_for('login'))
+    
     today_str = datetime.today().strftime('%Y-%m-%d')
+    target_date = request.form.get('target_date', today_str)
+    
+    # ENFORCE SYSTEM TIME LOCK OVERRIDE PROTECTION
+    if session['role'] == 'supervisor':
+        target_date = today_str
+        
+    conn = get_db_connection()
     workers = conn.execute("SELECT emp_code FROM workers").fetchall()
     
     for worker in workers:
@@ -85,44 +145,79 @@ def submit_attendance():
                 shift_morning=excluded.shift_morning,
                 shift_afternoon=excluded.shift_afternoon,
                 shift_night=excluded.shift_night
-        ''', (today_str, code, m_shift, a_shift, n_shift))
+        ''', (target_date, code, m_shift, a_shift, n_shift))
         
     conn.commit()
     conn.close()
-    return redirect(url_for('index'))
+    return redirect(url_for('index', date=target_date))
 
 @app.route('/payroll-report')
 def payroll_report():
+    if not require_login(): return redirect(url_for('login'))
+    if session['role'] != 'admin': abort(403) # Absolute blockage for supervisors
+    
+    current_month = request.args.get('month', datetime.today().strftime('%Y-%m'))
     conn = get_db_connection()
-    # Aggregates records for the current month execution
-    current_month = datetime.today().strftime('%Y-%m')
     
     report_query = '''
         SELECT 
-            w.emp_code, 
-            w.name, 
-            w.department,
+            w.emp_code, w.name, w.department,
             COUNT(CASE WHEN al.shift_morning = 'Present' THEN 1 END) +
             COUNT(CASE WHEN al.shift_afternoon = 'Present' THEN 1 END) +
             COUNT(CASE WHEN al.shift_night = 'Present' THEN 1 END) as regular_shifts,
-            
             COUNT(CASE WHEN al.shift_morning = 'WOW' THEN 1 END) +
             COUNT(CASE WHEN al.shift_afternoon = 'WOW' THEN 1 END) +
             COUNT(CASE WHEN al.shift_night = 'WOW' THEN 1 END) as weekly_off_worked,
-            
             COUNT(CASE WHEN al.shift_morning = 'SL' OR al.shift_afternoon = 'SL' OR al.shift_night = 'SL' THEN 1 END) as sick_leaves,
             COUNT(CASE WHEN al.shift_morning = 'CL' OR al.shift_afternoon = 'CL' OR al.shift_night = 'CL' THEN 1 END) as casual_leaves,
             COUNT(CASE WHEN al.shift_morning = 'PL' OR al.shift_afternoon = 'PL' OR al.shift_night = 'PL' THEN 1 END) as paid_leaves
         FROM workers w
         LEFT JOIN attendance_logs al ON w.emp_code = al.emp_code AND al.log_date LIKE ?
-        GROUP BY w.emp_code
+        GROUP BY w.emp_code ORDER BY w.emp_code ASC
     '''
     rows = conn.execute(report_query, (f'{current_month}%',)).fetchall()
     conn.close()
     return render_template('report.html', rows=rows, current_month=current_month)
 
+# --- ADMIN POWER COMMAND TOOLS ---
+
+@app.route('/add-worker', methods=['POST'])
+def add_worker():
+    if not require_login() or session['role'] != 'admin': abort(403)
+    conn = get_db_connection()
+    emp_code = request.form.get('emp_code').strip().upper()
+    name = request.form.get('name').strip()
+    department = request.form.get('department').strip()
+    if emp_code and name:
+        try:
+            conn.execute("INSERT INTO workers VALUES (?, ?, ?)", (emp_code, name, department))
+            conn.commit()
+        except sqlite3.IntegrityError: pass
+    conn.close()
+    return redirect(url_for('index'))
+
+@app.route('/manage-supervisor', methods=['POST'])
+def manage_supervisor():
+    if not require_login() or session['role'] != 'admin': abort(403)
+    action = request.form.get('action')
+    username = request.form.get('username').strip()
+    password = request.form.get('password').strip()
+    
+    conn = get_db_connection()
+    if action == 'create' and username and password:
+        try:
+            conn.execute("INSERT INTO users VALUES (?, ?, 'supervisor', 'active')", (username, password))
+        except sqlite3.IntegrityError: pass
+    elif action == 'toggle':
+        current = conn.execute("SELECT status FROM users WHERE username = ?", (username,)).fetchone()
+        if current:
+            new_status = 'inactive' if current['status'] == 'active' else 'active'
+            conn.execute("UPDATE users SET status = ? WHERE username = ?", (new_status, username))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     init_db()
-    # Render binds to port 10000 by default or environment variables
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
