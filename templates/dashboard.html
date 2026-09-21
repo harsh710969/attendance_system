@@ -3,99 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Factory Attendance Dashboard</title>
+    <title>Factory Enterprise Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 20px; }
-        .container { max-w: 1200px; margin: 0 auto; padding: 20px; }
-        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 30px; }
-        h1 { margin: 0; color: #0f172a; font-size: 28px; }
-        .btn-report { background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; rounded-radius: 6px; font-weight: 600; border-radius: 6px; font-size: 14px; }
-        .btn-report:hover { background-color: #1d4ed8; }
-        .table-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --bg: #f1f5f9; --surface: #ffffff; --text: #0f172a; --text-light: #64748b; --border: #cbd5e1; --success: #059669; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 280px; background-color: #0f172a; color: white; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }
+        .main-workspace { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .top-navbar { background: var(--surface); padding: 15px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .scrollable-content { flex: 1; overflow-y: auto; padding: 30px; box-sizing: border-box; }
+        .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background-color: #f1f5f9; padding: 14px 18px; color: #475569; font-size: 12px; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
-        td { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
-        tr:hover { background-color: #f8fafc; }
-        .emp-code { font-family: monospace; font-weight: 600; color: #334155; }
-        .dept { font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
-        .worker-name { font-weight: 600; color: #0f172a; }
-        select { background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; width: 100%; color: #334155; font-size: 13px; outline: none; }
-        select:focus { border-color: #2563eb; background-color: white; }
-        .footer-action { background-color: #f8fafc; padding: 15px 20px; display: flex; justify-content: flex-end; border-top: 1px solid #e2e8f0; }
-        .btn-submit { background-color: #059669; color: white; border: none; padding: 12px 24px; font-weight: 600; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-        .btn-submit:hover { background-color: #047857; }
+        th { background-color: #f8fafc; padding: 14px; color: var(--text-light); font-size: 11px; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .search-bar { width: 100%; padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; margin-bottom: 15px; outline: none; box-sizing: border-box;}
+        .search-bar:focus { border-color: var(--primary); }
+        select { background: #f8fafc; border: 1px solid var(--border); padding: 8px; border-radius: 6px; width: 100%; font-size: 13px; outline: none; }
+        .btn { padding: 10px 18px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; width: 100%; padding: 12px; font-size: 14px; }
+        .btn-logout { background: #e2e8f0; color: #334155; }
+        .form-row { display: flex; gap: 10px; margin-top: 10px; }
+        .input-box { border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 100%; outline: none; box-sizing: border-box; }
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; }
+        .bg-green { background: #dcfce7; color: #15803d; }
+        .bg-red { background: #fee2e2; color: #b91c1c; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div>
-                <h1>Multi-Shift Attendance System</h1>
-                <div style="font-size: 14px; color: #64748b; margin-top: 5px;">Date: <strong style="color: #334155;">{{ today_str }}</strong></div>
-            </div>
-            <a href="/payroll-report" class="btn-report">View Monthly Payroll Report</a>
-        </header>
 
-        <form action="/submit-attendance" method="POST" class="table-card">
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
+    <div class="sidebar">
+        <div>
+            <h2 style="margin:0 0 5px 0; font-size:20px;">Factory Workspace</h2>
+            <p style="color:#94a3b8; font-size:12px; margin:0 0 30px 0;">Logged: <strong>{{ session['username'] }} ({{ session['role'] }})</strong></p>
+            
+            <nav style="display:flex; flex-direction:column; gap:10px;">
+                <a href="/" class="btn btn-primary" style="text-align:left;">📋 Daily Attendance Entry</a>
+                {% if session['role'] == 'admin' %}
+                    <a href="/payroll-report" class="btn btn-logout" style="text-align:left; background:#1e293b; color:white;">📊 Monthly Payroll Summary</a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <div style="background:#1e293b; padding:15px; border-radius:8px; border:1px solid #334155;">
+            <h4 style="margin:0 0 10px 0; font-size:12px; color:#cbd5e1;">🔑 Reset Password</h4>
+            <form action="/change-password" method="POST">
+                <input type="password" name="new_password" placeholder="Type new key" class="input-box" style="background:#0f172a; color:white; border-color:#475569;" required>
+                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px; padding:6px; font-size:11px;">Update Password</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="main-workspace">
+        <div class="top-navbar">
+            <div>
+                <span style="color:var(--text-light); font-size:13px;">Operations Ledger Tracking Date:</span>
+                {% if session['role'] == 'admin' %}
+                    <input type="date" value="{{ today_str }}" class="input-box" style="width:160px; display:inline-block; margin-left:10px;" onchange="window.location.href='/?date='+this.value">
+                {% else %}
+                    <strong style="margin-left:5px;">{{ today_str }} (Locked)</strong>
+                {% endif %}
+            </div>
+            <a href="/logout" class="btn btn-logout">Secure Terminal Logout</a>
+        </div>
+
+        <div class="scrollable-content">
+            <input type="text" id="searchInput" class="search-bar" placeholder="🔍 Type Worker Name or Employee Code to filter rows instantly...">
+
+            <form action="/submit-attendance" method="POST" class="card" style="padding:0; overflow:hidden;">
+                <input type="hidden" name="target_date" value="{{ today_str }}">
+                <div style="overflow-x: auto;">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Emp Code</th>
+                                <th style="width: 30%;">Worker Name / Department</th>
+                                <th style="width: 18%;">Morning Shift</th>
+                                <th style="width: 18%;">Afternoon Shift</th>
+                                <th style="width: 18%;">Night Shift</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for worker in workers %}
+                            {% set log = log_map.get(worker.emp_code) %}
+                            <tr>
+                                <td style="font-weight:700; color:#334155; font-family:monospace;">{{ worker.emp_code }}</td>
+                                <td>
+                                    <div style="font-weight:600; color:var(--text);">{{ worker.name }}</div>
+                                    <div style="font-size:11px; color:var(--text-light);">{{ worker.department }}</div>
+                                </td>
+                                <td>
+                                    <select name="morning_{{ worker.emp_code }}">
+                                        <option value="None" {% if log and log.shift_morning == 'None' %}selected{% endif %}>—</option>
+                                        <option value="Present" {% if log and log.shift_morning == 'Present' %}selected{% endif %}>Present</option>
+                                        <option value="WOW" {% if log and log.shift_morning == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
+                                        <option value="SL" {% if log and log.shift_morning == 'SL' %}selected{% endif %}>Sick Leave (SL)</option>
+                                        <option value="CL" {% if log and log.shift_morning == 'CL' %}selected{% endif %}>Casual Leave (CL)</option>
+                                        <option value="PL" {% if log and log.shift_morning == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="afternoon_{{ worker.emp_code }}">
+                                        <option value="None" {% if log and log.shift_afternoon == 'None' %}selected{% endif %}>—</option>
+                                        <option value="Present" {% if log and log.shift_afternoon == 'Present' %}selected{% endif %}>Present</option>
+                                        <option value="WOW" {% if log and log.shift_afternoon == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
+                                        <option value="SL" {% if log and log.shift_afternoon == 'SL' %}selected{% endif %}>Sick Leave (SL)</option>
+                                        <option value="CL" {% if log and log.shift_afternoon == 'CL' %}selected{% endif %}>Casual Leave (CL)</option>
+                                        <option value="PL" {% if log and log.shift_afternoon == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="night_{{ worker.emp_code }}">
+                                        <option value="None" {% if log and log.shift_night == 'None' %}selected{% endif %}>—</option>
+                                        <option value="Present" {% if log and log.shift_night == 'Present' %}selected{% endif %}>Present</option>
+                                        <option value="WOW" {% if log and log.shift_night == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
+                                        <option value="SL" {% if log and log.shift_night == 'SL' %}selected{% endif %}>Sick Leave (SL)</option>
+                                        <option value="CL" {% if log and log.shift_night == 'CL' %}selected{% endif %}>Casual Leave (CL)</option>
+                                        <option value="PL" {% if log and log.shift_night == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="background:#f8fafc; padding:15px; text-align:right; border-top:1px solid var(--border);">
+                    <button type="submit" class="btn btn-success" style="width:auto; display:inline-block;">💾 Save Attendance Submissions</button>
+                </div>
+            </form>
+
+            {% if session['role'] == 'admin' %}
+                <div class="card">
+                    <h3 style="margin:0 0 15px 0; font-size:16px;">➕ Onboard New Worker Profile</h3>
+                    <form action="/add-worker" method="POST">
+                        <div class="form-row"><input type="text" name="emp_code" placeholder="Employee Code" class="input-box" required></div>
+                        <div class="form-row"><input type="text" name="name" placeholder="Full Worker Name" class="input-box" required></div>
+                        <div class="form-row"><input type="text" name="department" placeholder="Department" class="input-box" required></div>
+                        <div class="form-row" style="margin-top:15px;"><button type="submit" class="btn btn-primary" style="width:100%;">Register Employee</button></div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin:0 0 15px 0; font-size:16px;">👥 Provision Supervisor Access</h3>
+                    <form action="/manage-supervisor" method="POST" class="form-row">
+                        <input type="hidden" name="action" value="create">
+                        <input type="text" name="username" placeholder="Supervisor User ID" class="input-box" required>
+                        <input type="password" name="password" placeholder="Passkey" class="input-box" required>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </form>
+
+                    <table style="font-size:13px; margin-top:15px;">
+                        {% for supervisor in supervisors %}
                         <tr>
-                            <th style="width: 15%;">Emp Code</th>
-                            <th style="width: 25%;">Worker Name</th>
-                            <th style="width: 20%;">Morning Shift (06-14)</th>
-                            <th style="width: 20%;">Afternoon Shift (14-22)</th>
-                            <th style="width: 20%;">Night Shift (22-06)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for worker in workers %}
-                        {% set log = log_map.get(worker.emp_code) %}
-                        <tr>
-                            <td class="emp-code">{{ worker.emp_code }}</td>
-                            <td>
-                                <div class="worker-name">{{ worker.name }}</div>
-                                <div class="dept">{{ worker.department }}</div>
-                            </td>
-                            <td>
-                                <select name="morning_{{ worker.emp_code }}">
-                                    <option value="None" {% if log and log.shift_morning == 'None' %}selected{% endif %}>—</option>
-                                    <option value="Present" {% if log and log.shift_morning == 'Present' %}selected{% endif %}>Present</option>
-                                    <option value="WOW" {% if log and log.shift_morning == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
-                                    <option value="SL" {% if log and log.shift_morning == 'SL' %}selected{% endif %}>Sick Leave (SL)</option>
-                                    <option value="CL" {% if log and log.shift_morning == 'CL' %}selected{% endif %}>Casual Leave (CL)</option>
-                                    <option value="PL" {% if log and log.shift_morning == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
-                                </select>
-                            </td>
-                            <td>
-                                <select name="afternoon_{{ worker.emp_code }}">
-                                    <option value="None" {% if log and log.shift_afternoon == 'None' %}selected{% endif %}>—</option>
-                                    <option value="Present" {% if log and log.shift_afternoon == 'Present' %}selected{% endif %}>Present</option>
-                                    <option value="WOW" {% if log and log.shift_afternoon == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
-                                    <option value="SL" {% if log and log.shift_afternoon == 'SL' %}selected{% endif %}>Sick Leave (SL)</option>
-                                    <option value="CL" {% if log and log.shift_afternoon == 'CL' %}selected{% endif %}>Casual Leave (CL)</option>
-                                    <option value="PL" {% if log and log.shift_afternoon == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
-                                </select>
-                            </td>
-                            <td>
-                                <select name="night_{{ worker.emp_code }}">
-                                    <option value="None" {% if log and log.shift_night == 'None' %}selected{% endif %}>—</option>
-                                    <option value="Present" {% if log and log.shift_night == 'Present' %}selected{% endif %}>Present</option>
-                                    <option value="WOW" {% if log and log.shift_night == 'WOW' %}selected{% endif %}>Weekly Off Worked (WOW)</option>
-                                    <option value="SL" {% if log and log.shift_night == 'SL' %}selected{% endif %}>Sick Leave (SL)</option>
-                                    <option value="CL" {% if log and log.shift_night == 'CL' %}selected{% endif %}>Casual Leave (CL)</option>
-                                    <option value="PL" {% if log and log.shift_night == 'PL' %}selected{% endif %}>Paid Leave (PL)</option>
-                                </select>
+                            <td style="font-weight:600; padding:8px 0;">{{ supervisor.username }}</td>
+                            <td><span class="badge {% if supervisor.status == 'active' %}bg-green{% else %}bg-red{% endif %}">{{ supervisor.status }}</span></td>
+                            <td style="text-align:right;">
+                                <form action="/manage-supervisor" method="POST" style="display:inline;">
+                                    <input type="hidden" name="action" value="toggle">
+                                    <input type="hidden" name="username" value="{{ supervisor.username }}">
+                                    <button type="submit" class="btn" style="padding:4px 8px; font-size:11px; background:#e2e8f0;">Toggle Access</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="footer-action">
-                <button type="submit" class="btn-submit">Save Today's Attendance</button>
-            </div>
-        </form>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
     </div>
+
+    <script>
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            let filter = this.value.toLowerCase();
+            let rows = document.querySelectorAll('#attendanceTable tbody tr');
+            rows.forEach(row => {
+                let text = row.innerText.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+    </script>
 </body>
 </html>
